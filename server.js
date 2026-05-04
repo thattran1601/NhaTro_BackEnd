@@ -23,3 +23,12 @@ app.post("/api/click", (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server chạy tại http://localhost:${PORT}`);
 });
+const db = require("./db");
+
+// test query
+app.get("/api/users", (req, res) => {
+  db.query("SELECT 1 + 1 AS result", (err, results) => {
+    if (err) return res.status(500).send(err);
+    res.json(results);
+  });
+});
