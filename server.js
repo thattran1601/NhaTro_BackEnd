@@ -32,3 +32,10 @@ app.get("/api/users", (req, res) => {
     res.json(results);
   });
 });
+connection.connect((err) => {
+  if (err) {
+    console.log("❌ MySQL KHÔNG kết nối được:", err);
+  } else {
+    console.log("✅ MySQL kết nối thành công!");
+  }
+});
