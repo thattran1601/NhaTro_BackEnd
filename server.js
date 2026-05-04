@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const db = require("./db");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -7,35 +8,45 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// API test
+/* ======================
+   API TEST
+====================== */
 app.get("/api/message", (req, res) => {
-    res.json({ message: "Hello từ backend NodeJS 🚀" });
+  res.json({ message: "Hello từ backend NodeJS 🚀" });
 });
 
-// API đếm số lần click
+/* ======================
+   CLICK COUNTER
+====================== */
 let count = 0;
 
 app.post("/api/click", (req, res) => {
-    count++;
-    res.json({ count });
+  count++;
+  res.json({ count });
 });
 
-app.listen(PORT, () => {
-    console.log(`Server chạy tại http://localhost:${PORT}`);
-});
-const db = require("./db");
-
-// test query
-app.get("/api/users", (req, res) => {
+/* ======================
+   TEST MYSQL
+====================== */
+app.get("/api/test-db", (req, res) => {
   db.query("SELECT 1 + 1 AS result", (err, results) => {
-    if (err) return res.status(500).send(err);
-    res.json(results);
+    if (err) {
+      return res.status(500).json({
+        message: "❌ DB lỗi",
+        error: err
+      });
+    }
+
+    res.json({
+      message: "✅ DB OK",
+      data: results
+    });
   });
 });
-connection.connect((err) => {
-  if (err) {
-    console.log("❌ MySQL KHÔNG kết nối được:", err);
-  } else {
-    console.log("✅ MySQL kết nối thành công!");
-  }
+
+/* ======================
+   START SERVER
+====================== */
+app.listen(PORT, () => {
+  console.log(`Server chạy tại port ${PORT}`);
 });
