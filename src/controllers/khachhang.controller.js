@@ -1,4 +1,4 @@
-const pool = require('../../config/db'); // Lưu ý đường dẫn trỏ đúng tới db.js của bạn
+const pool = require('../config/db'); // Lưu ý đường dẫn trỏ đúng tới db.js của bạn
 
 const khachHangController = {
   // [GET] Lấy danh sách khách hàng (Có hỗ trợ tìm kiếm theo CCCD hoặc SDT)

@@ -1,4 +1,4 @@
-const pool = require('../../config/db'); // Đường dẫn tới file cấu hình kết nối database của bạn
+const pool = require('../config/db'); // Đường dẫn tới file cấu hình kết nối database của bạn
 
 const thanNhanController = {
   // [GET] Lấy danh sách thân nhân của một khách hàng cụ thể
