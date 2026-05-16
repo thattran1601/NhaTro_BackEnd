@@ -1,4 +1,4 @@
-const pool = require('../config/db'); // Lưu ý đường dẫn trỏ đúng tới db.js của bạn
+const db = require('../config/db'); // Lưu ý đường dẫn trỏ đúng tới db.js của bạn
 
 const khachHangController = {
   // [GET] Lấy danh sách khách hàng (Có hỗ trợ tìm kiếm theo CCCD hoặc SDT)
@@ -16,8 +16,13 @@ const khachHangController = {
 
       query += ' ORDER BY MaKH DESC';
 
-      const [rows] = await pool.execute(query, params);
-      return res.status(200).json({ success: true, data: rows });
+      db.query(query, params, (err, rows) => {
+        if (err) {
+          console.error('Lỗi getAll khách hàng:', err);
+          return res.status(500).json({ success: false, message: 'Lỗi server' });
+        }
+        return res.status(200).json({ success: true, data: rows });
+      });
     } catch (error) {
       console.error('Lỗi getAll khách hàng:', error);
       return res.status(500).json({ success: false, message: 'Lỗi server' });
@@ -28,12 +33,17 @@ const khachHangController = {
   getById: async (req, res) => {
     try {
       const { id } = req.params;
-      const [rows] = await pool.execute('SELECT * FROM khachhang WHERE MaKH = ?', [id]);
-      
-      if (rows.length === 0) {
-        return res.status(404).json({ success: false, message: 'Không tìm thấy khách hàng' });
-      }
-      return res.status(200).json({ success: true, data: rows[0] });
+      db.query('SELECT * FROM khachhang WHERE MaKH = ?', [id], (err, rows) => {
+        if (err) {
+          console.error('Lỗi getById khách hàng:', err);
+          return res.status(500).json({ success: false, message: 'Lỗi server' });
+        }
+
+        if (rows.length === 0) {
+          return res.status(404).json({ success: false, message: 'Không tìm thấy khách hàng' });
+        }
+        return res.status(200).json({ success: true, data: rows[0] });
+      });
     } catch (error) {
       console.error('Lỗi getById khách hàng:', error);
       return res.status(500).json({ success: false, message: 'Lỗi server' });
@@ -51,18 +61,29 @@ const khachHangController = {
       }
 
       // Kiểm tra xem CCCD đã tồn tại chưa (vì CCCD là UNIQUE key)
-      const [existKH] = await pool.execute('SELECT MaKH FROM khachhang WHERE CCCD = ?', [CCCD]);
-      if (existKH.length > 0) {
-        return res.status(400).json({ success: false, message: 'Số CCCD này đã tồn tại trong hệ thống' });
-      }
+      db.query('SELECT MaKH FROM khachhang WHERE CCCD = ?', [CCCD], (err, existKH) => {
+        if (err) {
+          console.error('Lỗi create khách hàng:', err);
+          return res.status(500).json({ success: false, message: 'Lỗi server' });
+        }
 
-      const query = 'INSERT INTO khachhang (HoTen, CCCD, AnhCCCD, SDT) VALUES (?, ?, ?, ?)';
-      const [result] = await pool.execute(query, [HoTen, CCCD, AnhCCCD || null, SDT]);
+        if (existKH.length > 0) {
+          return res.status(400).json({ success: false, message: 'Số CCCD này đã tồn tại trong hệ thống' });
+        }
 
-      return res.status(201).json({ 
-        success: true, 
-        message: 'Thêm khách hàng thành công', 
-        data: { MaKH: result.insertId, HoTen, CCCD, AnhCCCD, SDT }
+        const query = 'INSERT INTO khachhang (HoTen, CCCD, AnhCCCD, SDT) VALUES (?, ?, ?, ?)';
+        db.query(query, [HoTen, CCCD, AnhCCCD || null, SDT], (insertErr, result) => {
+          if (insertErr) {
+            console.error('Lỗi create khách hàng:', insertErr);
+            return res.status(500).json({ success: false, message: 'Lỗi server' });
+          }
+
+          return res.status(201).json({ 
+            success: true, 
+            message: 'Thêm khách hàng thành công', 
+            data: { MaKH: result.insertId, HoTen, CCCD, AnhCCCD, SDT }
+          });
+        });
       });
     } catch (error) {
       console.error('Lỗi create khách hàng:', error);
@@ -77,23 +98,46 @@ const khachHangController = {
       const { HoTen, CCCD, AnhCCCD, SDT } = req.body;
 
       // Kiểm tra KH có tồn tại không
-      const [checkKH] = await pool.execute('SELECT MaKH FROM khachhang WHERE MaKH = ?', [id]);
-      if (checkKH.length === 0) {
-        return res.status(404).json({ success: false, message: 'Không tìm thấy khách hàng để cập nhật' });
-      }
-
-      // Kiểm tra CCCD mới có bị trùng với người khác không
-      if (CCCD) {
-        const [existKH] = await pool.execute('SELECT MaKH FROM khachhang WHERE CCCD = ? AND MaKH != ?', [CCCD, id]);
-        if (existKH.length > 0) {
-          return res.status(400).json({ success: false, message: 'Số CCCD này đã được sử dụng cho một khách hàng khác' });
+      db.query('SELECT MaKH FROM khachhang WHERE MaKH = ?', [id], (err, checkKH) => {
+        if (err) {
+          console.error('Lỗi update khách hàng:', err);
+          return res.status(500).json({ success: false, message: 'Lỗi server' });
         }
-      }
 
-      const query = 'UPDATE khachhang SET HoTen = ?, CCCD = ?, AnhCCCD = ?, SDT = ? WHERE MaKH = ?';
-      await pool.execute(query, [HoTen, CCCD, AnhCCCD || null, SDT, id]);
+        if (checkKH.length === 0) {
+          return res.status(404).json({ success: false, message: 'Không tìm thấy khách hàng để cập nhật' });
+        }
 
-      return res.status(200).json({ success: true, message: 'Cập nhật thông tin khách hàng thành công' });
+        const processUpdate = () => {
+          const query = 'UPDATE khachhang SET HoTen = ?, CCCD = ?, AnhCCCD = ?, SDT = ? WHERE MaKH = ?';
+          db.query(query, [HoTen, CCCD, AnhCCCD || null, SDT, id], (updateErr) => {
+            if (updateErr) {
+              console.error('Lỗi update khách hàng:', updateErr);
+              return res.status(500).json({ success: false, message: 'Lỗi server' });
+            }
+
+            return res.status(200).json({ success: true, message: 'Cập nhật thông tin khách hàng thành công' });
+          });
+        };
+
+        // Kiểm tra CCCD mới có bị trùng với người khác không
+        if (CCCD) {
+          db.query('SELECT MaKH FROM khachhang WHERE CCCD = ? AND MaKH != ?', [CCCD, id], (duplicateErr, existKH) => {
+            if (duplicateErr) {
+              console.error('Lỗi update khách hàng:', duplicateErr);
+              return res.status(500).json({ success: false, message: 'Lỗi server' });
+            }
+
+            if (existKH.length > 0) {
+              return res.status(400).json({ success: false, message: 'Số CCCD này đã được sử dụng cho một khách hàng khác' });
+            }
+
+            return processUpdate();
+          });
+        } else {
+          return processUpdate();
+        }
+      });
     } catch (error) {
       console.error('Lỗi update khách hàng:', error);
       return res.status(500).json({ success: false, message: 'Lỗi server' });
