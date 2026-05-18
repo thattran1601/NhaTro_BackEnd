@@ -1,7 +1,7 @@
 const db=require("../config/db");  
 
 exports.getAllThietBi=async(req,res)=>{
-    db.query("select t.MaTB, tb.MaPhong, t.TenTB, t.SoSeri, t.TinhTrang from thietbi t join thietbiphong tb on t.MaTB=tb.MaTB",(err,result)=>{
+    db.query("select t.MaTB, tb.MaPhong, t.TenTB, t.SoSeri, tb.TinhTrang from thietbi t join thietbiphong tb on t.MaTB=tb.MaTB",(err,result)=>{
         if(err)
             {
                 console.error("Lỗi truy vấn cơ sở dữ liệu:", err);
