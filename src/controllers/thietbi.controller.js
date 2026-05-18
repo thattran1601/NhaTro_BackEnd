@@ -41,32 +41,101 @@ exports.createThietBi=(req,res)=>{
             }   
     });
 };  
-exports.updateThietBi=(req,res)=>{
-    const {TenTB,SoSeri,TinhTrang}=req.body;
-    db.query("update thietbi set t.TenTB=?,t.SoSeri=?,tbp.TinhTrang=? from thietbi t join thietbiphong tbp on t.MaTB=tbp.MaTB where MaTB=?",[TenTB,SoSeri,TinhTrang,req.params.id],(err,result)=>{
-        if(err)
-            {
-                console.error("Lỗi truy vấn cơ sở dữ liệu:", err);
-                res.status(500).json({ error: "Lỗi truy vấn cơ sở dữ liệu" });
-            }
-        else
-            {
-                res.json({message:"Cập nhật thiết bị thành công"});
-            }
+exports.updateThietBi = (req, res) => {
+    const { TenTB, SoSeri, TinhTrang, MaPhong } = req.body;
+    const { id } = req.params;
+
+    if (!TenTB || !SoSeri) {
+        return res.status(400).json({
+            error: "Thiếu tên thiết bị hoặc số seri"
+        });
+    }
+
+    const updateSql = `
+        UPDATE thietbi
+        SET TenTB = ?, SoSeri = ?
+        WHERE MaTB = ?
+    `;
+
+    db.query(updateSql, [TenTB, SoSeri, id], (err, result) => {
+
+        if (err) {
+            console.error(err);
+            return res.status(500).json({
+                error: "Lỗi cập nhật thiết bị"
+            });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                error: "Không tìm thấy thiết bị"
+            });
+        }
+
+        // nếu có phòng thì cập nhật tình trạng
+        if (MaPhong && TinhTrang !== undefined) {
+
+            const updateTinhTrangSql = `
+                UPDATE thietbiphong
+                SET TinhTrang = ?
+                WHERE MaPhong = ? AND MaTB = ?
+            `;
+
+            db.query(updateTinhTrangSql, [TinhTrang, MaPhong, id], (err2) => {
+
+                if (err2) {
+                    console.error(err2);
+                    return res.status(500).json({
+                        error: "Lỗi cập nhật tình trạng thiết bị"
+                    });
+                }
+
+                res.json({
+                    message: "Cập nhật thiết bị thành công"
+                });
+            });
+
+        }
+        else {
+
+            res.json({
+                message: "Cập nhật thiết bị thành công"
+            });
+
+        }
+
     });
 };
-exports.deleteThietBi=(req,res)=>{
-    db.query("delete from thietbi Where MaTB=?",[req.params.id],(err)=>{
-        if(err)
-            {
+exports.deleteThietBi = (req, res) => {
+
+    db.query(
+        "DELETE FROM thietbi WHERE MaTB = ?",
+        [req.params.id],
+        (err, result) => {
+
+            if (err) {
+
                 console.error("Lỗi truy vấn cơ sở dữ liệu:", err);
-                res.status(500).json({ error: "Lỗi truy vấn cơ sở dữ liệu" });
+
+                return res.status(500).json({
+                    error: "Không thể xóa thiết bị"
+                });
             }
-        else
-            {
-                res.json({message:"Xóa thiết bị thành công"});
-            }   
-    });
+
+            if (result.affectedRows === 0) {
+
+                return res.status(404).json({
+                    error: "Không tìm thấy thiết bị"
+                });
+            }
+
+            res.json({
+                message: "Xóa thiết bị thành công"
+            });
+
+        }
+    );
+
 };
 exports.addThietBiToPhong = (req, res) => {
     const { MaPhong, MaTB } = req.body;
