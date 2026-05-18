@@ -1,7 +1,7 @@
 const db=require("../config/db");  
 
 exports.getAllThietBi=async(req,res)=>{
-    db.query("select*from thietbi",(err,result)=>{
+    db.query("select t.MaTB, tb.MaPhong, t.TenTB, t.SoSeri, tb.TinhTrang from thietbi t join thietbiphong tb on t.MaTB=tb.MaTB",(err,result)=>{
         if(err)
             {
                 console.error("Lỗi truy vấn cơ sở dữ liệu:", err);
@@ -82,5 +82,51 @@ exports.addThietBiToPhong=(req,res)=>{
             {
                 res.json({message:"Thêm thiết bị vào phòng thành công"});
             }
+    });
+};
+exports.addThietBiToPhong = (req, res) => {
+    const { MaPhong, MaTB } = req.body;
+    const TinhTrang = 0;
+
+    if (!MaPhong || !MaTB) {
+        return res.status(400).json({
+            error: "Thiếu dữ liệu"
+        });
+    }
+
+    const checkSql = `
+        SELECT * FROM thietbiphong
+        WHERE MaTB = ? AND MaPhong IS NOT NULL
+    `;
+
+    db.query(checkSql, [MaTB], (err, result) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({
+                error: "Lỗi kiểm tra dữ liệu"
+            });
+        }
+        if (result.length > 0) {
+            return res.status(400).json({
+                message: "Thiết bị đã được gán cho phòng khác"
+            });
+        }
+        const insertSql = `
+            INSERT INTO thietbiphong (MaPhong, MaTB, TinhTrang)
+            VALUES (?, ?, ?)
+        `;
+
+        db.query(insertSql, [MaPhong, MaTB, TinhTrang], (err, data) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({
+                    error: "Lỗi thêm dữ liệu"
+                });
+            }
+
+            res.json({
+                message: "Thêm thiết bị vào phòng thành công"
+            });
+        });
     });
 };
