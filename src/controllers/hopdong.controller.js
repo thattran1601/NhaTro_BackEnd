@@ -28,6 +28,35 @@ const contractController = {
         }
     },
 
+    // [GET] /api/hopdong/phong/:MaPhong
+    getContractsByRoom: async (req, res) => {
+        try {
+            const { MaPhong } = req.params;
+            const { TrangThai } = req.query;
+
+            let query = 'SELECT * FROM hopdong WHERE MaPhong = ?';
+            const queryParams = [MaPhong];
+
+            if (TrangThai !== undefined) {
+                query += ' AND TrangThai = ?';
+                queryParams.push(TrangThai);
+            }
+
+            query += ' ORDER BY NgayTao DESC'; // Sắp xếp hợp đồng mới nhất lên đầu
+
+            db.query(query, queryParams, (err, rows) => {
+                if (err) {
+                    console.error(err);
+                    return res.status(500).json({ success: false, message: 'Lỗi server' });
+                }
+                return res.status(200).json({ success: true, data: rows });
+            });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ success: false, message: 'Lỗi server' });
+        }
+    },
+
     // [POST] /api/hopdong
     createContract: async (req, res) => {
         const { MaPhong, MaKH, NgayKT, TienCoc, TrangThai } = req.body;
