@@ -1,4 +1,4 @@
-const pool = require('../config/db'); // Đường dẫn tới file cấu hình kết nối database của bạn
+const db = require('../config/db'); // Đường dẫn tới file cấu hình kết nối database của bạn
 
 const thanNhanController = {
   // [GET] Lấy danh sách thân nhân của một khách hàng cụ thể
@@ -7,16 +7,27 @@ const thanNhanController = {
       const { maKH } = req.params;
 
       // Kiểm tra xem khách hàng có tồn tại không
-      const [khachHang] = await pool.execute('SELECT MaKH FROM khachhang WHERE MaKH = ?', [maKH]);
-      if (khachHang.length === 0) {
-        return res.status(404).json({ success: false, message: 'Không tìm thấy thông tin khách hàng này' });
-      }
+      db.query('SELECT MaKH FROM khachhang WHERE MaKH = ?', [maKH], (err, khachHang) => {
+        if (err) {
+          console.error('Lỗi getByKhachHang thân nhân:', err);
+          return res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
 
-      // Truy vấn danh sách thân nhân thuộc khách hàng đó
-      const query = 'SELECT * FROM thannhan WHERE MaKH = ? ORDER BY MaTN DESC';
-      const [rows] = await pool.execute(query, [maKH]);
+        if (khachHang.length === 0) {
+          return res.status(404).json({ success: false, message: 'Không tìm thấy thông tin khách hàng này' });
+        }
 
-      return res.status(200).json({ success: true, data: rows });
+        // Truy vấn danh sách thân nhân thuộc khách hàng đó
+        const query = 'SELECT * FROM thannhan WHERE MaKH = ? ORDER BY MaTN DESC';
+        db.query(query, [maKH], (queryErr, rows) => {
+          if (queryErr) {
+            console.error('Lỗi getByKhachHang thân nhân:', queryErr);
+            return res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+          }
+
+          return res.status(200).json({ success: true, data: rows });
+        });
+      });
     } catch (error) {
       console.error('Lỗi getByKhachHang thân nhân:', error);
       return res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
@@ -34,18 +45,29 @@ const thanNhanController = {
       }
 
       // Kiểm tra xem khách hàng (người thuê) có tồn tại thực tế không
-      const [khachHang] = await pool.execute('SELECT MaKH FROM khachhang WHERE MaKH = ?', [MaKH]);
-      if (khachHang.length === 0) {
-        return res.status(404).json({ success: false, message: 'Khách hàng không tồn tại, không thể thêm thân nhân' });
-      }
+      db.query('SELECT MaKH FROM khachhang WHERE MaKH = ?', [MaKH], (err, khachHang) => {
+        if (err) {
+          console.error('Lỗi create thân nhân:', err);
+          return res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
 
-      const query = 'INSERT INTO thannhan (MaKH, HoTen, SDT, QuanHe) VALUES (?, ?, ?, ?)';
-      const [result] = await pool.execute(query, [MaKH, HoTen, SDT, QuanHe || null]);
+        if (khachHang.length === 0) {
+          return res.status(404).json({ success: false, message: 'Khách hàng không tồn tại, không thể thêm thân nhân' });
+        }
 
-      return res.status(201).json({
-        success: true,
-        message: 'Thêm thân nhân thành công',
-        data: { MaTN: result.insertId, MaKH, HoTen, SDT, QuanHe }
+        const query = 'INSERT INTO thannhan (MaKH, HoTen, SDT, QuanHe) VALUES (?, ?, ?, ?)';
+        db.query(query, [MaKH, HoTen, SDT, QuanHe || null], (insertErr, result) => {
+          if (insertErr) {
+            console.error('Lỗi create thân nhân:', insertErr);
+            return res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+          }
+
+          return res.status(201).json({
+            success: true,
+            message: 'Thêm thân nhân thành công',
+            data: { MaTN: result.insertId, MaKH, HoTen, SDT, QuanHe }
+          });
+        });
       });
     } catch (error) {
       console.error('Lỗi create thân nhân:', error);
@@ -60,20 +82,31 @@ const thanNhanController = {
       const { HoTen, SDT, QuanHe } = req.body;
 
       // Kiểm tra sự tồn tại của bản ghi thân nhân cần sửa
-      const [checkTN] = await pool.execute('SELECT MaTN FROM thannhan WHERE MaTN = ?', [id]);
-      if (checkTN.length === 0) {
-        return res.status(404).json({ success: false, message: 'Không tìm thấy thông tin thân nhân để cập nhật' });
-      }
+      db.query('SELECT MaTN FROM thannhan WHERE MaTN = ?', [id], (err, checkTN) => {
+        if (err) {
+          console.error('Lỗi update thân nhân:', err);
+          return res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
 
-      // Kiểm tra dữ liệu bắt buộc khi sửa
-      if (!HoTen || !SDT) {
-        return res.status(400).json({ success: false, message: 'Họ tên và Số điện thoại không được bỏ trống' });
-      }
+        if (checkTN.length === 0) {
+          return res.status(404).json({ success: false, message: 'Không tìm thấy thông tin thân nhân để cập nhật' });
+        }
 
-      const query = 'UPDATE thannhan SET HoTen = ?, SDT = ?, QuanHe = ? WHERE MaTN = ?';
-      await pool.execute(query, [HoTen, SDT, QuanHe || null, id]);
+        // Kiểm tra dữ liệu bắt buộc khi sửa
+        if (!HoTen || !SDT) {
+          return res.status(400).json({ success: false, message: 'Họ tên và Số điện thoại không được bỏ trống' });
+        }
 
-      return res.status(200).json({ success: true, message: 'Cập nhật thông tin thân nhân thành công' });
+        const query = 'UPDATE thannhan SET HoTen = ?, SDT = ?, QuanHe = ? WHERE MaTN = ?';
+        db.query(query, [HoTen, SDT, QuanHe || null, id], (updateErr) => {
+          if (updateErr) {
+            console.error('Lỗi update thân nhân:', updateErr);
+            return res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+          }
+
+          return res.status(200).json({ success: true, message: 'Cập nhật thông tin thân nhân thành công' });
+        });
+      });
     } catch (error) {
       console.error('Lỗi update thân nhân:', error);
       return res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
@@ -86,15 +119,26 @@ const thanNhanController = {
       const { id } = req.params; // MaTN nhận từ URL
 
       // Kiểm tra xem thân nhân có tồn tại không trước khi xóa
-      const [checkTN] = await pool.execute('SELECT MaTN FROM thannhan WHERE MaTN = ?', [id]);
-      if (checkTN.length === 0) {
-        return res.status(404).json({ success: false, message: 'Không tìm thấy thông tin thân nhân để xóa' });
-      }
+      db.query('SELECT MaTN FROM thannhan WHERE MaTN = ?', [id], (err, checkTN) => {
+        if (err) {
+          console.error('Lỗi delete thân nhân:', err);
+          return res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
 
-      const query = 'DELETE FROM thannhan WHERE MaTN = ?';
-      await pool.execute(query, [id]);
+        if (checkTN.length === 0) {
+          return res.status(404).json({ success: false, message: 'Không tìm thấy thông tin thân nhân để xóa' });
+        }
 
-      return res.status(200).json({ success: true, message: 'Xóa thân nhân thành công' });
+        const query = 'DELETE FROM thannhan WHERE MaTN = ?';
+        db.query(query, [id], (deleteErr) => {
+          if (deleteErr) {
+            console.error('Lỗi delete thân nhân:', deleteErr);
+            return res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+          }
+
+          return res.status(200).json({ success: true, message: 'Xóa thân nhân thành công' });
+        });
+      });
     } catch (error) {
       console.error('Lỗi delete thân nhân:', error);
       return res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
