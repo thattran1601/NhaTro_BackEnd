@@ -68,22 +68,6 @@ exports.deleteThietBi=(req,res)=>{
             }   
     });
 };
-exports.addThietBiToPhong=(req,res)=>{
-    const {MaPhong,MaTB}=req.body;  
-    const TinhTrang=0;
-
-    db.query("insert into thietbiphong(MaPhong,MaTB,TinhTrang) values(?,?,?)",[MaPhong,MaTB,TinhTrang],(err,result)=>{
-        if(err)
-            {
-                console.error("Lỗi truy vấn cơ sở dữ liệu:", err);
-                res.status(500).json({ error: "Lỗi truy vấn cơ sở dữ liệu" });
-            }
-        else
-            {
-                res.json({message:"Thêm thiết bị vào phòng thành công"});
-            }
-    });
-};
 exports.addThietBiToPhong = (req, res) => {
     const { MaPhong, MaTB } = req.body;
     const TinhTrang = 0;
