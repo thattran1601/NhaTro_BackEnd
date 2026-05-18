@@ -43,7 +43,7 @@ exports.createThietBi=(req,res)=>{
 };  
 exports.updateThietBi=(req,res)=>{
     const {TenTB,SoSeri,TinhTrang}=req.body;
-    db.query("update thietbi set TenTb=?,SoSeri=?,TinhTrang=? where MaTB=?",[TenTB,SoSeri,TinhTrang,req.params.id],(err,result)=>{
+    db.query("update thietbi set t.TenTB=?,t.SoSeri=?,tbp.TinhTrang=? from thietbi t join thietbiphong tbp on t.MaTB=tbp.MaTB where MaTB=?",[TenTB,SoSeri,TinhTrang,req.params.id],(err,result)=>{
         if(err)
             {
                 console.error("Lỗi truy vấn cơ sở dữ liệu:", err);
