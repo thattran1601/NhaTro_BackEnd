@@ -6,4 +6,5 @@ router.get("/:id",phongController.getAllPhongByIdNhaTro);
 router.post("/",phongController.createPhong);
 router.put("/:id",phongController.updatePhong);
 router.delete("/:id",phongController.deletePhong);
+router.get("/phong/:id",phongController.ChitietPhong);
 module.exports=router;
