@@ -8,4 +8,5 @@ router.post("/", thietbiController.createThietBi);
 router.put("/:id", thietbiController.updateThietBi);
 router.delete("/:id", thietbiController.deleteThietBi);
 router.post("/them-thiet-bi", thietbiController.addThietBiToPhong);
+router.delete("/xoa-thiet-bi/:id", thietbiController.removeThietBiFromPhong);
 module.exports=router;
