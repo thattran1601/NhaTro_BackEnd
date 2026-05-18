@@ -114,4 +114,27 @@ exports.addThietBiToPhong = (req, res) => {
         });
     });
 };
+exports.removeThietBiFromPhong = (req, res) => {
+    const { MaPhong, MaTB } = req.body;
+    if (!MaPhong || !MaTB) {
+        return res.status(400).json({
+            error: "Thiếu dữ liệu"
+        });
+    }
+    const deleteSql = `
+        DELETE FROM thietbiphong
+        WHERE MaPhong = ? AND MaTB = ?
+    `;
+    db.query(deleteSql, [MaPhong, MaTB], (err, result) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({
+                error: "Lỗi xóa dữ liệu"
+            });
+        }   
+        res.json({
+            message: "Xóa thiết bị khỏi phòng thành công"
+        });
+    });
+};
 
