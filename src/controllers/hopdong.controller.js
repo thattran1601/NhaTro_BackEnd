@@ -59,7 +59,10 @@ const contractController = {
 
     // [POST] /api/hopdong
     createContract: async (req, res) => {
-        const { MaPhong, MaKH, NgayKT, TienCoc, TrangThai } = req.body;
+        const { MaPhong, MaKH, NgayTao, NgayKT, TienCoc, TrangThai } = req.body;
+
+        // If NgayTao not provided, default to today's date (YYYY-MM-DD)
+        const ngayTaoValue = NgayTao ? NgayTao : new Date().toISOString().slice(0, 10);
 
         db.beginTransaction((beginErr) => {
             if (beginErr) {
@@ -68,8 +71,8 @@ const contractController = {
             }
 
             db.query(
-                'INSERT INTO hopdong (MaPhong, MaKH, NgayKT, TienCoc, TrangThai) VALUES (?, ?, ?, ?, ?)',
-                [MaPhong, MaKH, NgayKT || null, TienCoc || 0, TrangThai || 0],
+                'INSERT INTO hopdong (MaPhong, MaKH, NgayTao, NgayKT, TienCoc, TrangThai) VALUES (?, ?, ?, ?, ?, ?)',
+                [MaPhong, MaKH, ngayTaoValue, NgayKT || null, TienCoc || 0, TrangThai || 0],
                 (insertErr, result) => {
                     if (insertErr) {
                         return db.rollback(() => {
@@ -100,7 +103,7 @@ const contractController = {
                                 return res.status(201).json({
                                     success: true,
                                     message: 'Tạo hợp đồng thành công',
-                                    data: { MaHD: result.insertId, MaPhong, MaKH, NgayKT, TienCoc, TrangThai }
+                                    data: { MaHD: result.insertId, MaPhong, MaKH, NgayTao: ngayTaoValue, NgayKT, TienCoc, TrangThai }
                                 });
                             });
                         }
