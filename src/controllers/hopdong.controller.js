@@ -70,46 +70,121 @@ const contractController = {
                 return res.status(500).json({ success: false, message: 'Lỗi khi bắt đầu transaction' });
             }
 
-            db.query(
-                'INSERT INTO hopdong (MaPhong, MaKH, NgayTao, NgayKT, TienCoc, TrangThai) VALUES (?, ?, ?, ?, ?, ?)',
-                [MaPhong, MaKH, ngayTaoValue, NgayKT || null, TienCoc || 0, TrangThai || 0],
-                (insertErr, result) => {
-                    if (insertErr) {
+            // Bước 1: Lấy thông tin phòng (SoNguoi)
+            db.query('SELECT SoNguoi FROM phong WHERE MaPhong = ?', [MaPhong], (getRoomErr, roomRows) => {
+                if (getRoomErr) {
+                    return db.rollback(() => {
+                        console.error(getRoomErr);
+                        return res.status(500).json({ success: false, message: 'Lỗi khi lấy thông tin phòng' });
+                    });
+                }
+
+                if (!roomRows || roomRows.length === 0) {
+                    return db.rollback(() => {
+                        return res.status(404).json({ success: false, message: 'Phòng không tồn tại' });
+                    });
+                }
+
+                const SoNguoi = roomRows[0].SoNguoi;
+
+                // Bước 2: Đếm số hợp đồng hiện tại của phòng (chỉ tính hợp đồng đang hoạt động)
+                db.query('SELECT COUNT(*) as soHopDong FROM hopdong WHERE MaPhong = ? AND TrangThai = 1', [MaPhong], (countErr, countRows) => {
+                    if (countErr) {
                         return db.rollback(() => {
-                            console.error(insertErr);
-                            return res.status(500).json({ success: false, message: 'Lỗi khi tạo hợp đồng' });
+                            console.error(countErr);
+                            return res.status(500).json({ success: false, message: 'Lỗi khi đếm hợp đồng' });
                         });
                     }
 
+                    const soHopDongHienTai = countRows[0].soHopDong;
+
+                    // Bước 3: Kiểm tra nếu đã đạt số người tối đa
+                    if (soHopDongHienTai >= SoNguoi) {
+                        return db.rollback(() => {
+                            return res.status(400).json({ 
+                                success: false, 
+                                message: `Phòng này đã đầy. Số người tối đa: ${SoNguoi}, số hợp đồng hiện tại: ${soHopDongHienTai}` 
+                            });
+                        });
+                    }
+
+                    // Bước 4: Tạo hợp đồng
                     db.query(
-                        'UPDATE phong SET TinhTrang = 1 WHERE MaPhong = ?',
-                        [MaPhong],
-                        (updateErr) => {
-                            if (updateErr) {
+                        'INSERT INTO hopdong (MaPhong, MaKH, NgayTao, NgayKT, TienCoc, TrangThai) VALUES (?, ?, ?, ?, ?, ?)',
+                        [MaPhong, MaKH, ngayTaoValue, NgayKT || null, TienCoc || 0, TrangThai || 0],
+                        (insertErr, result) => {
+                            if (insertErr) {
                                 return db.rollback(() => {
-                                    console.error(updateErr);
-                                    return res.status(500).json({ success: false, message: 'Lỗi khi cập nhật trạng thái phòng' });
+                                    console.error(insertErr);
+                                    return res.status(500).json({ success: false, message: 'Lỗi khi tạo hợp đồng' });
                                 });
                             }
 
-                            db.commit((commitErr) => {
-                                if (commitErr) {
+                            // Bước 5: Đếm lại số hợp đồng sau khi tạo
+                            db.query('SELECT COUNT(*) as soHopDong FROM hopdong WHERE MaPhong = ? AND TrangThai = 1', [MaPhong], (reCountErr, reCountRows) => {
+                                if (reCountErr) {
                                     return db.rollback(() => {
-                                        console.error(commitErr);
-                                        return res.status(500).json({ success: false, message: 'Lỗi khi hoàn tất transaction' });
+                                        console.error(reCountErr);
+                                        return res.status(500).json({ success: false, message: 'Lỗi khi đếm lại hợp đồng' });
                                     });
                                 }
 
-                                return res.status(201).json({
-                                    success: true,
-                                    message: 'Tạo hợp đồng thành công',
-                                    data: { MaHD: result.insertId, MaPhong, MaKH, NgayTao: ngayTaoValue, NgayKT, TienCoc, TrangThai }
-                                });
+                                const soHopDongSauTao = reCountRows[0].soHopDong;
+                                let shouldUpdateRoom = false;
+
+                                // Bước 6: Nếu số hợp đồng = SoNguoi thì cập nhật TinhTrang = 1
+                                if (soHopDongSauTao >= SoNguoi) {
+                                    shouldUpdateRoom = true;
+
+                                    db.query(
+                                        'UPDATE phong SET TinhTrang = 1 WHERE MaPhong = ?',
+                                        [MaPhong],
+                                        (updateErr) => {
+                                            if (updateErr) {
+                                                return db.rollback(() => {
+                                                    console.error(updateErr);
+                                                    return res.status(500).json({ success: false, message: 'Lỗi khi cập nhật trạng thái phòng' });
+                                                });
+                                            }
+
+                                            db.commit((commitErr) => {
+                                                if (commitErr) {
+                                                    return db.rollback(() => {
+                                                        console.error(commitErr);
+                                                        return res.status(500).json({ success: false, message: 'Lỗi khi hoàn tất transaction' });
+                                                    });
+                                                }
+
+                                                return res.status(201).json({
+                                                    success: true,
+                                                    message: 'Tạo hợp đồng thành công. Phòng đã đầy.',
+                                                    data: { MaHD: result.insertId, MaPhong, MaKH, NgayTao: ngayTaoValue, NgayKT, TienCoc, TrangThai }
+                                                });
+                                            });
+                                        }
+                                    );
+                                } else {
+                                    // Không cập nhật trạng thái phòng, chỉ commit transaction
+                                    db.commit((commitErr) => {
+                                        if (commitErr) {
+                                            return db.rollback(() => {
+                                                console.error(commitErr);
+                                                return res.status(500).json({ success: false, message: 'Lỗi khi hoàn tất transaction' });
+                                            });
+                                        }
+
+                                        return res.status(201).json({
+                                            success: true,
+                                            message: 'Tạo hợp đồng thành công',
+                                            data: { MaHD: result.insertId, MaPhong, MaKH, NgayTao: ngayTaoValue, NgayKT, TienCoc, TrangThai }
+                                        });
+                                    });
+                                }
                             });
                         }
                     );
-                }
-            );
+                });
+            });
         });
     },
 

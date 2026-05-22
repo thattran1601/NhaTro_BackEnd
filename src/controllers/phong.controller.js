@@ -27,9 +27,9 @@ exports.getAllPhongByIdNhaTro=async(req,res)=>{
     });
 };
 exports.createPhong=(req,res)=>{
-    const {TenPhong,GiaThue}=req.body;
+    const {TenPhong,GiaThue,SoNguoi}=req.body;
     const TinhTrang=0;
-    db.query("insert into phong(TenPhong,GiaThue) values(?,?)",[TenPhong,GiaThue],(err,result)=>{
+    db.query("insert into phong(TenPhong,GiaThue,SoNguoi,TinhTrang) values(?,?,?,?)",[TenPhong,GiaThue,SoNguoi||1,TinhTrang],(err,result)=>{
         if(err)
             {
                 console.error("Lỗi truy vấn cơ sở dữ liệu:", err);
@@ -43,8 +43,8 @@ exports.createPhong=(req,res)=>{
     });
 };
 exports.updatePhong=(req,res)=>{
-    const {TenPhong,GiaThue,TinhTrang}=req.body;
-    db.query("update phong set TenPhong=?,GiaThue=?,TinhTrang=? where MaPhong=?",[TenPhong,GiaThue,TinhTrang,req.params.id],(err,result)=>{
+    const {TenPhong,GiaThue,SoNguoi,TinhTrang}=req.body;
+    db.query("update phong set TenPhong=?,GiaThue=?,SoNguoi=?,TinhTrang=? where MaPhong=?",[TenPhong,GiaThue,SoNguoi,TinhTrang,req.params.id],(err,result)=>{
         if(err)
             {
                 console.error("Lỗi truy vấn cơ sở dữ liệu:", err);
