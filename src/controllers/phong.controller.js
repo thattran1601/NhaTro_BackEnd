@@ -26,21 +26,63 @@ exports.getAllPhongByIdNhaTro=async(req,res)=>{
             }
     });
 };
-exports.createPhong=(req,res)=>{
-    const {TenPhong,GiaThue,SoNguoi}=req.body;
-    const TinhTrang=0;
-    db.query("insert into phong(TenPhong,GiaThue,SoNguoi,TinhTrang) values(?,?,?,?)",[TenPhong,GiaThue,SoNguoi||1,TinhTrang],(err,result)=>{
-        if(err)
-            {
+exports.createPhong = (req, res) => {
+
+    const {
+        TenPhong,
+        GiaThue,
+        SoNguoi,
+        DanhSachThietBi
+    } = req.body;
+
+    db.query(
+        "INSERT INTO phong(TenPhong, GiaThue, SoNguoi) VALUES(?,?,?)",
+        [TenPhong, GiaThue, SoNguoi],
+        (err, result) => {
+
+            if (err) {
                 console.error("Lỗi truy vấn cơ sở dữ liệu:", err);
-                res.status(500).json({ error: "Lỗi truy vấn cơ sở dữ liệu" });
+
+                return res.status(500).json({
+                    error: "Lỗi tạo phòng"
+                });
             }
-        else
-            {
-                res.json({message:"Tạo phòng thành công"});
+
+            
+            const MaPhong = result.insertId;
+
+        
+            if (!DanhSachThietBi || DanhSachThietBi.length === 0) {
+
+                return res.json({
+                    message: "Tạo phòng thành công"
+                });
             }
-         
-    });
+
+    
+            DanhSachThietBi.forEach((MaTB) => {
+
+                db.query(
+                    "INSERT INTO thietbiphong(MaPhong, MaTB, TinhTrang) VALUES(?,?,?)",
+                    [MaPhong, MaTB, 0],
+                    (err2) => {
+
+                        if (err2) {
+                            console.error("Lỗi thêm thiết bị:", err2);
+                        }
+
+                    }
+                );
+
+            });
+
+            res.json({
+                message: "Tạo phòng và thêm thiết bị thành công"
+            });
+
+        }
+    );
+
 };
 exports.updatePhong=(req,res)=>{
     const {TenPhong,GiaThue,SoNguoi,TinhTrang}=req.body;

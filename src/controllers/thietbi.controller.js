@@ -109,29 +109,53 @@ exports.updateThietBi = (req, res) => {
 exports.deleteThietBi = (req, res) => {
 
     db.query(
-        "DELETE FROM thietbi WHERE MaTB = ?",
+        "SELECT * FROM thietbiphong WHERE MaTB = ?",
         [req.params.id],
-        (err, result) => {
+        (checkErr, checkResult) => {
 
-            if (err) {
+            if (checkErr) {
 
-                console.error("Lỗi truy vấn cơ sở dữ liệu:", err);
+                console.error("Lỗi kiểm tra thiết bị:", checkErr);
 
                 return res.status(500).json({
-                    error: "Không thể xóa thiết bị"
+                    error: "Lỗi kiểm tra dữ liệu"
                 });
             }
 
-            if (result.affectedRows === 0) {
+            if (checkResult.length > 0) {
 
-                return res.status(404).json({
-                    error: "Không tìm thấy thiết bị"
+                return res.status(400).json({
+                    error: "Thiết bị đang được gán cho phòng, không thể xóa"
                 });
             }
 
-            res.json({
-                message: "Xóa thiết bị thành công"
-            });
+            db.query(
+                "DELETE FROM thietbi WHERE MaTB = ?",
+                [req.params.id],
+                (err, result) => {
+
+                    if (err) {
+
+                        console.error("Lỗi truy vấn cơ sở dữ liệu:", err);
+
+                        return res.status(500).json({
+                            error: "Không thể xóa thiết bị"
+                        });
+                    }
+
+                    if (result.affectedRows === 0) {
+
+                        return res.status(404).json({
+                            error: "Không tìm thấy thiết bị"
+                        });
+                    }
+
+                    res.json({
+                        message: "Xóa thiết bị thành công"
+                    });
+
+                }
+            );
 
         }
     );
