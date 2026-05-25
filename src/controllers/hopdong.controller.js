@@ -188,6 +188,73 @@ const contractController = {
         });
     },
 
+    // [POST] /api/hopdong/giahan
+    renewContract: async (req, res) => {
+        try {
+            const { MaHD, NgayKT } = req.body;
+
+            if (!MaHD || !NgayKT) {
+                return res.status(400).json({ success: false, message: 'MaHD và NgayKT mới là bắt buộc' });
+            }
+
+            const renewalDate = new Date();
+            const renewalDateString = renewalDate.toISOString().slice(0, 10);
+
+            db.query('SELECT NgayKT FROM hopdong WHERE MaHD = ?', [MaHD], (selectErr, rows) => {
+                if (selectErr) {
+                    console.error(selectErr);
+                    return res.status(500).json({ success: false, message: 'Lỗi khi lấy thông tin hợp đồng' });
+                }
+
+                if (!rows || rows.length === 0) {
+                    return res.status(404).json({ success: false, message: 'Không tìm thấy hợp đồng' });
+                }
+
+                const currentEndDate = rows[0].NgayKT;
+                if (!currentEndDate) {
+                    return res.status(400).json({ success: false, message: 'Hợp đồng hiện tại không có ngày kết thúc để gia hạn' });
+                }
+
+                const endDate = new Date(currentEndDate);
+                const currentDate = new Date(renewalDateString);
+                const millisecondsPerDay = 24 * 60 * 60 * 1000;
+                const diffDays = Math.floor((currentDate - endDate) / millisecondsPerDay);
+                const beforeEndDays = Math.floor((endDate - currentDate) / millisecondsPerDay);
+
+                if (beforeEndDays > 7) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Chỉ được gia hạn trong vòng 7 ngày trước hạn hoặc sau hạn hợp đồng.'
+                    });
+                }
+
+                db.query(
+                    'UPDATE hopdong SET NgayTao = ?, NgayKT = ? WHERE MaHD = ?',
+                    [renewalDateString, NgayKT, MaHD],
+                    (updateErr, result) => {
+                        if (updateErr) {
+                            console.error(updateErr);
+                            return res.status(500).json({ success: false, message: 'Lỗi khi gia hạn hợp đồng' });
+                        }
+
+                        if (result.affectedRows === 0) {
+                            return res.status(404).json({ success: false, message: 'Không tìm thấy hợp đồng để cập nhật' });
+                        }
+
+                        return res.status(200).json({
+                            success: true,
+                            message: 'Gia hạn hợp đồng thành công',
+                            data: { MaHD, NgayTao: renewalDateString, NgayKT }
+                        });
+                    }
+                );
+            });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ success: false, message: 'Lỗi server' });
+        }
+    },
+
     // [PUT] /api/hopdong/:MaHD
     updateContract: async (req, res) => {
         try {
